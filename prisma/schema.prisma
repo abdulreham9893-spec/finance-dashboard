@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  currency      String    @default("USD")
+  theme         String    @default("system")
+  dateFormat    String    @default("MMM dd, yyyy")
+  language      String    @default("en")
+  onboarded     Boolean   @default(false)
+
+  notificationsEnabled       Boolean @default(true)
+  budgetAlertsEnabled        Boolean @default(true)
+  aiInsightsEnabled          Boolean @default(true)
+  monthlyReportsEnabled      Boolean @default(true)
+  recurringRemindersEnabled  Boolean @default(true)
+  
+  accounts      Account[]
+  sessions      Session[]
+  transactions  Transaction[]
+  categories    Category[]
+  budgets       Budget[]
+  goals         Goal[]
+  notifications Notification[]
+  aiInsights    AIInsight[]
+  recurringTransactions RecurringTransaction[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  amount        Float
+  type          String   // INCOME or EXPENSE
+  description   String
+  categoryId    String?
+  merchant      String?
+  paymentMethod String   @default("BANK")
+  date          DateTime
+  notes         String?
+  isRecurring   Boolean  @default(false)
+  currency      String   @default("USD")
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, type])
+  @@index([userId, categoryId])
+}
+
+model Category {
+  id        String        @id @default(cuid())
+  userId    String
+  name      String
+  type      String        // INCOME or EXPENSE
+  icon      String        @default("Folder")
+  color     String        @default("#6366f1")
+  isDefault Boolean       @default(false)
+  
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+  recurringTransactions RecurringTransaction[]
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, name, type])
+  @@index([userId])
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  amount     Float
+  period     String   @default("MONTHLY") // WEEKLY, MONTHLY, YEARLY
+  startDate  DateTime @default(now())
+  endDate    DateTime?
+  
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, categoryId, period])
+  @@index([userId])
+}
+
+model Goal {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  targetAmount  Float
+  currentAmount Float      @default(0)
+  targetDate    DateTime?
+  description   String?
+  icon          String     @default("Target")
+  color         String     @default("#10b981")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // BUDGET_WARNING, BUDGET_EXCEEDED, AI_INSIGHT, MONTHLY_REPORT, RECURRING_REMINDER, GOAL_MILESTONE
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  actionUrl String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, read])
+}
+
+model AIInsight {
+  id      String @id @default(cuid())
+  userId  String
+  type    String // SPENDING_SUMMARY, BIGGEST_CHANGE, SAVING_OPPORTUNITY, POSITIVE_HABIT, BUDGET_RECOMMENDATION, MONTHLY_REPORT
+  title   String
+  content String
+  period  String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId, type])
+}
+
+model RecurringTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  description String
+  amount      Float
+  type        String   // INCOME or EXPENSE
+  frequency   String   // WEEKLY, MONTHLY, YEARLY
+  nextDate    DateTime
+  categoryId  String?
+  active      Boolean  @default(true)
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+}
