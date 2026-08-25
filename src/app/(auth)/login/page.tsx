@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
@@ -29,6 +29,13 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
+  const urlError = searchParams.get("error");
+  useEffect(() => {
+    if (urlError) {
+      toast.error("Invalid email or password");
+    }
+  }, [urlError]);
+
   const {
     register,
     handleSubmit,
@@ -41,24 +48,18 @@ function LoginForm() {
   const onSubmit = async (values: LoginForm) => {
     setLoading(true);
     try {
-      const result = await signIn("credentials", {
+      const callbackUrl = searchParams.get("callbackUrl");
+      await signIn("credentials", {
         email: values.email,
         password: values.password,
-        redirect: false,
+        redirectTo:
+          callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard",
       });
-
-      if (result?.error) {
-        toast.error("Invalid email or password");
-        return;
-      }
-
-      toast.success("Welcome back!");
-      const callbackUrl = searchParams.get("callbackUrl");
-      window.location.href = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
+      // On success the browser navigates away; on failure NextAuth
+      // redirects back to /login?error=CredentialsSignin (handled above).
     } catch {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
       setLoading(false);
+      toast.error("Something went wrong. Please try again.");
     }
   };
 
