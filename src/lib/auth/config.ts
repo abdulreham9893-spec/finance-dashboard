@@ -58,12 +58,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.onboarded = user.onboarded;
       }
       if (token.id) {
-        const dbUser = await db.user.findUnique({
-          where: { id: token.id as string },
-          select: { onboarded: true },
-        });
-        if (dbUser) {
-          token.onboarded = dbUser.onboarded;
+        try {
+          const dbUser = await db.user.findUnique({
+            where: { id: token.id as string },
+            select: { onboarded: true },
+          });
+          if (dbUser) {
+            token.onboarded = dbUser.onboarded;
+          }
+        } catch {
+          // keep existing onboarded value if DB is slow/unavailable
         }
       }
       return token;
