@@ -54,8 +54,7 @@ function LoginForm() {
 
       toast.success("Welcome back!");
       const callbackUrl = searchParams.get("callbackUrl");
-      router.push(callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard");
-      router.refresh();
+      window.location.href = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
     } catch {
       toast.error("Something went wrong. Please try again.");
     } finally {
